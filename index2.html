@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>최준호의 번역 웹사이트</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" />
+  <style>
+    .split {
+      height: 100%;
+      width: 50%;
+      position: fixed;
+      z-index: 1;
+      top: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-top: 20px;
+    }
+
+    .left {
+      left: 0;
+      padding-left: 3%;
+      padding-right: 10%;
+      padding-top: 2%;
+
+    }
+
+    .right {
+      right: 0;
+      padding-left: 3%;
+      padding-right: 10%;
+      padding-top: 2%;
+    }
+
+    .centered {
+      position: relative;
+      top: 0;
+      left: 50%;
+      transform: translate(-50%, 0);
+      text-align: left;
+      max-height: 100%;
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%;
+      table-layout: fixed;
+    }
+
+    .block {
+      position: relative;
+      border: 1px solid black;
+      display: inline-block;
+      padding: 10px;
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 100%;
+    }
+  </style>
+
+</head>
+
+<body>
+
+  <div class="split left">
+    <div class="centered">
+
+      <div class="translate block">
+
+        <form action="javascript:void(0)">
+          <div class="form-group">
+            <label>번역할 텍스트를 입력해주세요.</label>
+            <textarea class="form-control" id="textInput" rows="3"></textarea>
+          </div>
+          <button onclick="sendReqeust()" class="btn btn-primary">번역하기</button>
+        </form>
+        <br>
+        <p>번역 결과</p>
+        <h5 id="resultText"></h5>
+      </div>
+      <br><br>
+
+      <div class="save block">
+        <p>db에 저장하기</p>
+        <div style="border: 1px solid black; display: inline-block; padding: 10px; min-width: 100px;">
+          <h5 id="resultText2"></h5>
+        </div>
+        <form action="javascript:void(0)">
+          <p>방금 받은 변역을 db에 저장</p>
+          <button onclick="saveToDB()" class="btn btn-primary">저장하기</button>
+          <h5 id="saveResult"></h5>
+        </form>
+      </div>
+      <br><br>
+      <div class="load block">
+        <p>db에서 불러오기</p>
+
+        <form action="javascript:void(0)">
+          <p>불러오고싶은 id 입력하세요</p>
+          <input type="text" id="loadText">
+          <button onclick="load()" class="btn btn-primary">불러오기</button>
+        </form>
+        <h5 id="resultText3"></h5>
+      </div>
+      <br><br>
+      <div class="delete1 block">
+        <p>db에서 삭제하기</p>
+
+        <form action="javascript:void(0)">
+          <p>삭제하고 싶은 id 입력하세요</p>
+          <input type="text" id="deleteText">
+          <button onclick="delete1()" class="btn btn-primary">삭제하기</button>
+        </form>
+        <h5 id="deletedText"></h5>
+      </div>
+
+
+    </div>
+  </div>
+
+
+  <div class="split right">
+    <h1 style="left: 30%;">
+      최준호의 번역 다중 기능 웹사이트
+    </h1>
+    <br>
+    <p> db에 저장된 id값</p>
+    <div class="centered block">
+
+      <br>
+      <table id="idTable">
+        <tr>
+        </tr>
+      </table>
+
+    </div>
+  </div>
+
+</body>
+
+<script type="text/javascript">
+  var inputSelector = document.querySelector("#textInput");
+  var resultText = document.querySelector("#resultText");
+  var resultText2 = document.querySelector("#resultText2");
+  var saveResult = document.querySelector("#saveResult");
+  var resultText3 = document.querySelector("#resultText3");
+  var deletedText = document.querySelector("#deletedText");
+
+  var currentChar = null;
+  var translateID = null;
+  var loadText = document.querySelector("#loadText");
+  var deleteText = document.querySelector("#deleteText");
+
+  let tableRef = document.getElementById("idTable");
+
+  function sendReqeust() {
+    resultText.innerHTML = "로딩중...";
+    fetch(
+      "https://hdd0brg6m0.execute-api.ap-northeast-2.amazonaws.com/translate",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          text: inputSelector.value,
+        }),
+      }
+    ).then(response => {
+      return response.text().then(translatedText => {
+        resultText.innerHTML = translatedText;
+        resultText2.innerHTML = translatedText;
+        currentChar = translatedText;
+        console.log("sendReqeust " + currentChar);
+      });
+    });
+  }
+
+
+  function saveToDB() {
+
+    fetch(
+      "https://hdd0brg6m0.execute-api.ap-northeast-2.amazonaws.com/save",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          text: currentChar,
+        }),
+      }
+    ).then(response => {
+      return response.json().then(json => {
+        translateID = json.translateID;
+        console.log("saveToDB " + translateID, "    text2" + json);
+        saveResult.innerHTML = `db에 ${translateID}로 검색 가능`;
+
+        let newRow = tableRef.insertRow(-1);
+        newRow.setAttribute("id", translateID, 0); //id부여
+        let newCell = newRow.insertCell(0);
+        let newText = document.createTextNode("[" + translateID + "]" + " " + currentChar);
+        newCell.appendChild(newText);
+      });
+    });
+
+
+  }
+
+  function load() {
+    resultText3.innerHTML = "db에 없으면 안나옵니다";
+    fetch(
+      "https://hdd0brg6m0.execute-api.ap-northeast-2.amazonaws.com/load",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          text: loadText.value,
+        }),
+      }
+    ).then(response => {
+      return response.json().then(d => {
+        resultText3.innerHTML = JSON.parse(d.dbValue.data.S);
+        console.log("load  " + JSON.stringify(d));
+      });
+    });
+  }
+
+  function delete1() {
+    try {
+      var rows = tableRef.rows; // 모든 행 가져오기
+      console.log(rows)
+      console.log(deleteText)
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].id == deleteText.value) { // 입력값과 일치하는 id 찾기
+          console.log("지움")
+          tableRef.deleteRow(i); // 해당 행 삭제
+          break;
+        }
+      }
+
+    } catch (error) {
+      deleteError.innerHTML = "삭제할 수 없습니다";
+
+    }
+
+
+    fetch(
+      "https://hdd0brg6m0.execute-api.ap-northeast-2.amazonaws.com/delete",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          text: deleteText.value,
+        }),
+      }
+    ).then(response => {
+      return response.json().then(d => {
+        deletedText.innerHTML = d.deleteResponse;
+        console.log("deleted  " + JSON.stringify(d));
+        console.log("delete complete");
+      });
+    });
+  }
+
+</script>
+</html>
